@@ -23,7 +23,7 @@ FROM Layoffs_staging;
 SELECT * 
 FROM Layoffs_staging
 WHERE company = 'Booktopia';
-
+--
 WITH duplicate_cte AS
  (
  SELECT *,
