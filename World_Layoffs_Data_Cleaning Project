@@ -239,3 +239,5 @@ FROM duplicate_cte
 WHERE row_num > 1;
 
 
+-- THE DATA IS FINALY CLEANED & there are no duplicate values
+select * from world_layoff;
