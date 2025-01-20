@@ -1,0 +1,241 @@
+SELECT * 
+FROM Layoffs;
+
+-- 1.lets REMOVE DUPLICATES
+-- 2.STANDARIZE THE DATA (same format)
+-- 3.NULL/Blank Values
+-- 4.Remove Unnessary Rows&Columns
+
+CREATE TABLE Layoffs_staging
+LIKE layoffs;
+
+SELECT *
+FROM Layoffs_staging; 
+
+INSERT Layoffs_staging
+SELECT *
+FROM layoffs;
+
+SELECT *,
+row_number() OVER (PARTITION BY company,location,industry,total_laid_off,percentage_laid_off,'date',stage,country,funds_raised_millions) AS row_num
+FROM Layoffs_staging;
+
+SELECT * 
+FROM Layoffs_staging
+WHERE company = 'Booktopia';
+
+WITH duplicate_cte AS
+ (
+ SELECT *,
+row_number() OVER (
+PARTITION BY company,location,industry,total_laid_off,percentage_laid_off,'date',stage,country,funds_raised_millions) 
+AS row_num
+FROM Layoffs_staging
+)
+--Deleting the duplicate CTE
+DELETE 
+FROM duplicate_cte
+WHERE row_num > 1;
+
+-- CREATING AN EXTRA TABLE 2 AND DELETING THAT COLUMN
+
+CREATE TABLE `Layoffs_staging2` (
+  `company` text,
+  `location` text,
+  `industry` text,
+  `total_laid_off` int DEFAULT NULL,
+  `percentage_laid_off` text,
+  `date` text,
+  `stage` text,
+  `country` text,
+  `funds_raised_millions` int DEFAULT NULL,
+   `row_num` int
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+SELECT *
+FROM Layoffs_staging2; 
+
+INSERT INTO Layoffs_staging2
+SELECT *,
+Row_number() OVER (
+PARTITION BY company,location,industry,total_laid_off,percentage_laid_off,'date',stage,country,funds_raised_millions) 
+AS row_num
+FROM Layoffs_staging;
+
+DELETE
+FROM Layoffs_staging2
+WHERE row_num >1;
+
+SELECT * 
+FROM Layoffs_staging2
+where row_num >1;
+
+
+-- STANDARDIZING THE DATA
+SELECT company, trim(company)
+FROM layoffs_staging2;
+
+UPDATE layoffs_staging2
+SET company = trim(company);
+
+SELECT DISTINCT industry AS INDUSTRY
+From layoffs_staging2
+ORDER BY 1;
+
+SELECT * 
+from layoffs_staging2;
+
+SELECT date,COUNTRY
+from Layoffs_staging2;
+
+UPDATE Layoffs_staging2
+SET date = case
+	WHEN date LIKE '%m/%d/%Y' THEN date_format(date,'%m-%d-%y')
+    ELSE date 
+end;
+
+SELECT *
+FROM layoffs_staging2
+WHERE total_laid_off IS NULL
+AND percentage_laid_off is NULL ;
+
+   
+   
+SELECT *
+FROM layoffs_staging2 t1
+JOIN layoffs_staging2 t2
+    ON t1.company = t2.company
+    AND t1.location =  t2.location
+WHERE (t1.industry IS NULL OR t1.industry = '')
+AND t2.industry IS NOT NULL; 
+    
+
+select *
+from layoffs_staging2;
+
+select *
+FROM layoffs_staging2
+WHERE total_laid_off IS NULL
+AND percentage_laid_off IS NULL;
+
+delete 
+FROM layoffs_staging2
+WHERE total_laid_off IS NULL
+AND percentage_laid_off IS NULL;
+
+select *
+FROM layoffs_staging2;
+
+--Droping the Row column
+
+alter table layoffs_staging2
+DROP COLUMN row_num; 
+
+select *
+from layoffs_staging2
+where total_laid_off is NULL;
+
+ /*DELETING ALL THE NULL VALUES IN COLUMN total_laid_off as with null values are of no use for our data analysis */
+delete
+from layoffs_staging2
+where total_laid_off is NULL; 
+
+SELECT * 
+FROM layoffs_staging2
+where percentage_laid_off is NULL;
+
+/* Deleting the null values in the percentage_laid_off column, as it's of no use */
+
+delete 
+FROM layoffs_staging2
+ where percentage_laid_off is NULL;
+ 
+ /* DONE WITH THE CLEANING */
+ 
+ select *
+ FROM layoffs_staging2;
+ 
+ alter table layoffs_staging2
+ drop industry;
+ 
+ delete
+ from layoffs_staging2
+ where funds_raised_millions is NULL;
+ /*cleared all the null data in whole table*/
+ 
+ select *
+ from layoffs_staging;
+ 
+SELECT *
+FROM Layoffs_staging2; 
+
+alter table layoffs_staging2 add column industry VARCHAR(225);
+
+UPDATE layoffs_staging2 as b
+join Layoffs_staging as a
+on b.company = a.company
+SET b.industry = a.industry;
+
+select company, industry, location,country, percentage_laid_off, funds_raised_millions,date
+from layoffs_staging2;
+
+create table world_layoff as(
+select company, industry, location,country, percentage_laid_off, funds_raised_millions,date
+from layoffs_staging2
+);
+drop table world_layoff;
+select * from Layoffs;
+select * from world_layoff;
+
+--removing all the litereal duplicates
+
+--/*trying to delete the literal dups from final table*/
+
+with jashu as(
+SELECT *, 
+row_number() OVER (PARTITION BY company,location,industry,percentage_laid_off,date ,country,funds_raised_millions) AS row_num
+FROM world_layoff)
+select * from jashu where row_num >1;
+
+delete from world_layoff where isnull (industry);
+
+SELECT * FROM world_layoff
+WHERE (company, location, industry, percentage_laid_off, date, country, funds_raised_millions) IN (
+    SELECT distinct company, location, industry, percentage_laid_off, date, country, funds_raised_millions 
+    FROM (
+        SELECT company, location, industry, percentage_laid_off, date, country, funds_raised_millions,
+               ROW_NUMBER() OVER (PARTITION BY company, location, industry, percentage_laid_off, date, country, funds_raised_millions ORDER BY (SELECT NULL)) AS row_num
+        FROM world_layoff
+    ) AS temp
+    WHERE temp.row_num > 1
+);
+
+
+create table world_layoff as (
+SELECT company, location, industry, percentage_laid_off, date, country, funds_raised_millions
+FROM (
+    SELECT company, location, industry, percentage_laid_off, date, country, funds_raised_millions,
+           ROW_NUMBER() OVER (PARTITION BY company, location, industry, percentage_laid_off, date, country, funds_raised_millions ORDER BY (SELECT NULL)) AS row_num
+    FROM layoffs_staging2
+) AS temp
+WHERE temp.row_num = 1
+);
+
+delete from world_layoff
+as ()
+
+
+ WITH duplicate_cte AS
+ (
+ SELECT *,
+row_number() OVER (
+PARTITION BY company,location,industry,total_laid_off,percentage_laid_off,'date',stage,country,funds_raised_millions) 
+AS row_num
+FROM Layoffs_staging
+)
+
+SELECT * 
+FROM duplicate_cte
+WHERE row_num > 1;
+
+
